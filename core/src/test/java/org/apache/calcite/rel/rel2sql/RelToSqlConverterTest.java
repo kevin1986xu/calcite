@@ -221,6 +221,23 @@ class RelToSqlConverterTest {
     sql(query).ok(expected);
   }
 
+  /** Test case for
+   * <a href="https://issues.apache.org/jira/browse/CALCITE-4901">[CALCITE-4901]
+   * JDBC adapter incorrectly adds ORDER BY columns to the SELECT list</a>. */
+  @Test void testOrderByNotInSelectList() {
+    // Before 4901 was fixed, the generated query would have "product_id" in its
+    // SELECT clause.
+    String query = "select count(1) as c\n"
+        + "from \"foodmart\".\"product\"\n"
+        + "group by \"product_id\"\n"
+        + "order by \"product_id\" desc";
+    final String expected = "SELECT COUNT(*) AS \"C\"\n"
+        + "FROM \"foodmart\".\"product\"\n"
+        + "GROUP BY \"product_id\"\n"
+        + "ORDER BY \"product_id\" DESC";
+    sql(query).ok(expected);
+  }
+
   @Test void testAggregateFilterWhereToSqlFromProductTable() {
     String query = "select\n"
         + "  sum(\"shelf_width\") filter (where \"net_weight\" > 0),\n"
@@ -455,8 +472,7 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
+                ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .filter(b.equals(b.field("JOB"), b.literal("DEVELOP")))
@@ -480,8 +496,7 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
+                ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .filter(
@@ -512,9 +527,9 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1),
-                        ImmutableBitSet.of(0), ImmutableBitSet.of())),
+                ImmutableList.of(ImmutableBitSet.of(0, 1),
+                    ImmutableBitSet.of(0),
+                    ImmutableBitSet.of())),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .filter(
@@ -545,9 +560,7 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1),
-                        ImmutableBitSet.of(0))),
+                ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .project(b.field("JOB"))
@@ -567,9 +580,7 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1),
-                        ImmutableBitSet.of(0))),
+                ImmutableList.of(ImmutableBitSet.of(0, 1), ImmutableBitSet.of(0))),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .sort(b.field("C"))
@@ -590,9 +601,9 @@ class RelToSqlConverterTest {
         .scan("EMP")
         .aggregate(
             b.groupKey(ImmutableBitSet.of(0, 1, 2),
-                (Iterable<ImmutableBitSet>)
-                    ImmutableList.of(ImmutableBitSet.of(0, 1),
-                        ImmutableBitSet.of(0), ImmutableBitSet.of())),
+                ImmutableList.of(ImmutableBitSet.of(0, 1),
+                    ImmutableBitSet.of(0),
+                    ImmutableBitSet.of())),
             b.count(false, "C"),
             b.sum(false, "S", b.field("SAL")))
         .filter(
@@ -1522,7 +1533,7 @@ class RelToSqlConverterTest {
   @Test void testSelectQueryWithOrderByClause() {
     String query = "select \"product_id\" from \"product\"\n"
         + "order by \"net_weight\"";
-    final String expected = "SELECT \"product_id\", \"net_weight\"\n"
+    final String expected = "SELECT \"product_id\"\n"
         + "FROM \"foodmart\".\"product\"\n"
         + "ORDER BY \"net_weight\"";
     sql(query).ok(expected);
@@ -1540,8 +1551,7 @@ class RelToSqlConverterTest {
   @Test void testSelectQueryWithTwoOrderByClause() {
     String query = "select \"product_id\" from \"product\"\n"
         + "order by \"net_weight\", \"gross_weight\"";
-    final String expected = "SELECT \"product_id\", \"net_weight\","
-        + " \"gross_weight\"\n"
+    final String expected = "SELECT \"product_id\"\n"
         + "FROM \"foodmart\".\"product\"\n"
         + "ORDER BY \"net_weight\", \"gross_weight\"";
     sql(query).ok(expected);
@@ -1550,8 +1560,7 @@ class RelToSqlConverterTest {
   @Test void testSelectQueryWithAscDescOrderByClause() {
     String query = "select \"product_id\" from \"product\" "
         + "order by \"net_weight\" asc, \"gross_weight\" desc, \"low_fat\"";
-    final String expected = "SELECT"
-        + " \"product_id\", \"net_weight\", \"gross_weight\", \"low_fat\"\n"
+    final String expected = "SELECT \"product_id\"\n"
         + "FROM \"foodmart\".\"product\"\n"
         + "ORDER BY \"net_weight\", \"gross_weight\" DESC, \"low_fat\"";
     sql(query).ok(expected);
@@ -2610,13 +2619,13 @@ class RelToSqlConverterTest {
   @Test void testSelectQueryWithLimitOffsetClause() {
     String query = "select \"product_id\" from \"product\"\n"
         + "order by \"net_weight\" asc limit 100 offset 10";
-    final String expected = "SELECT \"product_id\", \"net_weight\"\n"
+    final String expected = "SELECT \"product_id\"\n"
         + "FROM \"foodmart\".\"product\"\n"
         + "ORDER BY \"net_weight\"\n"
         + "OFFSET 10 ROWS\n"
         + "FETCH NEXT 100 ROWS ONLY";
     // BigQuery uses LIMIT/OFFSET, and nulls sort low by default
-    final String expectedBigQuery = "SELECT product_id, net_weight\n"
+    final String expectedBigQuery = "SELECT product_id\n"
         + "FROM foodmart.product\n"
         + "ORDER BY net_weight IS NULL, net_weight\n"
         + "LIMIT 100\n"
@@ -2658,10 +2667,9 @@ class RelToSqlConverterTest {
     final String expectedMssql10 = "SELECT TOP (100) [product_id]\n"
         + "FROM [foodmart].[product]\n"
         + "ORDER BY CASE WHEN [product_id] IS NULL THEN 1 ELSE 0 END, [product_id]";
-    final String expectedMssql = "SELECT [product_id]\n"
+    final String expectedMssql = "SELECT TOP (100) [product_id]\n"
         + "FROM [foodmart].[product]\n"
-        + "ORDER BY CASE WHEN [product_id] IS NULL THEN 1 ELSE 0 END, [product_id]\n"
-        + "FETCH NEXT 100 ROWS ONLY";
+        + "ORDER BY CASE WHEN [product_id] IS NULL THEN 1 ELSE 0 END, [product_id]";
     final String expectedSybase = "SELECT TOP (100) product_id\n"
         + "FROM foodmart.product\n"
         + "ORDER BY product_id";
@@ -3592,6 +3600,23 @@ class RelToSqlConverterTest {
         + "FROM [foodmart].[employee]";
     sql(query)
         .withMssql().ok(expected);
+  }
+
+  @Test void testFetchMssql() {
+    String query = "SELECT * FROM \"employee\" LIMIT 1";
+    String expected = "SELECT TOP (1) *\nFROM [foodmart].[employee]";
+    sql(query)
+        .withMssql().ok(expected);
+  }
+
+  @Test void testFetchOffset() {
+    String query = "SELECT * FROM \"employee\" LIMIT 1 OFFSET 1";
+    String expectedMssql = "SELECT *\nFROM [foodmart].[employee]\nOFFSET 1 ROWS\n"
+        + "FETCH NEXT 1 ROWS ONLY";
+    String expectedSybase = "SELECT TOP (1) START AT 1 *\nFROM foodmart.employee";
+    sql(query)
+        .withMssql().ok(expectedMssql)
+        .withSybase().ok(expectedSybase);
   }
 
   @Test void testFloorMssqlMonth() {
@@ -6453,7 +6478,7 @@ class RelToSqlConverterTest {
               getPlanner(null, parserConfig, defaultSchema, config, librarySet, typeSystem);
           SqlNode parse = planner.parse(sql);
           SqlNode validate = planner.validate(parse);
-          rel = planner.rel(validate).rel;
+          rel = planner.rel(validate).project();
         }
         for (Function<RelNode, RelNode> transform : transforms) {
           rel = transform.apply(rel);
